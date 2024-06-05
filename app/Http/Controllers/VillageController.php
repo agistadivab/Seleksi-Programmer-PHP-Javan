@@ -43,94 +43,98 @@ class VillageController extends Controller
         );
     }
 
-    public function store(Request $request) 
-{
-    $input = $request->all();
-
-    $validator = Validator::make($input, [
-        'code' => 'required|unique:villages,code',
-        'district_code' => 'required',
-        'name' => 'required'
-    ]);
-
-    if ($validator->fails()) {
-        return response()->json([
-            'status_code' => 400,
-            'message' => 'Validation Error',
-            'errors' => $validator->errors()
-        ], 400);
-    }
-
-    $village = Village::create($input);
-
-    return response()->json([
-        'status_code' => 201,
-        'message' => 'Village created successfully',
-        'data' => $village
-    ], 201);
-}
-
-
-    public function update(Request $request, $id) 
+    public function store(Request $request)
     {
-        $village = Village::find($id);
-
-        if (is_null($village)) {
-            return response()->json(
-                [
-                    'status_code' => 404,
-                    'message' => 'Village not found.'
-                ], 404
-            );
-        }
-
-        $input = $request->all();
-
-        $validator = Validator::make($input, [
-            'name' => 'required|max:255'
+        $validator = Validator::make($request->all(), [
+            'code' => 'required|unique:indonesia_villages,code',
+            'district_code' => 'required|exists:indonesia_districts,code',
+            'name' => 'required|string|max:255',
+            'meta' => 'nullable|array'
         ]);
 
         if ($validator->fails()) {
-            return response()->json(
-                [
-                    'status_code' => 400,
-                    'message' => 'Validation Error',
-                    'errors' => $validator->errors()
-                ], 400
-            );
+            return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $village->update($input);
+        $village = Village::create([
+            'code' => $request->input('code'),
+            'district_code' => $request->input('district_code'),
+            'name' => $request->input('name'),
+            'meta' => $request->input('meta', [
+                'lat' => 'NULL',
+                'long' => 'NULL',
+                'pos' => 'NULL'
+            ])
+        ]);
 
+        return response()->json(['data' => $village], 201);
+    }
+
+
+    public function update(Request $request, $id) 
+{
+    $village = Village::find($id);
+
+    if (is_null($village)) {
         return response()->json(
             [
-                'status_code' => 200,
-                'message' => 'Village updated successfully',
-                'data' => $village
-            ], 200
+                'status_code' => 404,
+                'message' => 'Village not found.'
+            ], 404
         );
     }
 
-    public function destroy($id) 
-    {
-        $village = Village::find($id);
+    $validator = Validator::make($request->all(), [
+        'code' => 'sometimes|required|unique:indonesia_villages,code,' . $id,
+        'district_code' => 'sometimes|required|exists:indonesia_districts,code',
+        'name' => 'sometimes|required|string|max:255',
+        'meta' => 'nullable|array'
+    ]);
 
-        if (is_null($village)) {
-            return response()->json(
-                [
-                    'status_code' => 404,
-                    'message' => 'Village not found.'
-                ], 404
-            );
-        }
-
-        $village->delete();
-
+    if ($validator->fails()) {
         return response()->json(
             [
-                'status_code' => 200,
-                'message' => 'Village deleted successfully'
-            ], 200
+                'status_code' => 400,
+                'message' => 'Validation Error',
+                'errors' => $validator->errors()
+            ], 400
         );
     }
+
+    $village->fill($request->all());
+    $village->save();
+
+    return response()->json(
+        [
+            'status_code' => 200,
+            'message' => 'Village updated successfully',
+            'data' => $village
+        ], 200
+    );
+}
+
+
+public function destroy($id) 
+{
+    $village = Village::find($id);
+
+    if (is_null($village)) {
+        return response()->json(
+            [
+                'status_code' => 404,
+                'message' => 'Village not found.'
+            ], 404
+        );
+    }
+
+    $village->delete();
+
+    return response()->json(
+        [
+            'status_code' => 200,
+            'message' => 'Village deleted successfully'
+        ], 200
+    );
+}
+
 }
